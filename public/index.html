@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlickFinder – Discover Movies & TV Shows</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+    <!-- FLOATING GLASS NAVBAR - TOP RIGHT ONLY -->
+    <div class="logo-container">
+        <div class="logo">
+            <i class="fas fa-film"></i> FlickFinder
+        </div>
+
+    </div>
+      
+    <nav class="glass-nav">
+        <div class="nav-container">
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-page="home">Home</a>
+                <a href="#" class="nav-link" data-page="movies">Movies</a>
+                <a href="#" class="nav-link" data-page="shows">TV Shows</a>
+                <a href="#" class="nav-link" data-page="mylist">MyList</a>
+            </div>
+            <div class="nav-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search...">
+            </div>
+            <div class="nav-auth">
+                <button class="auth-btn signin"><i class="fas fa-user"></i> Sign In</button>
+                <button class="auth-btn login"><i class="fas fa-sign-in-alt"></i> Login</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION - DESCRIPTION ON RIGHT -->
+    <section class="hero">
+        <div class="hero-slides" id="heroSlides"></div>
+        <div class="hero-controls">
+            <button class="hero-prev"><i class="fas fa-chevron-left"></i></button>
+            <button class="hero-next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="hero-dots" id="heroDots"></div>
+    </section>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title"><i class="fas fa-fire-flame"></i> Trending Now</h2>
+            <div>
+                <button id="gridPrev" class="grid-nav"><i class="fas fa-chevron-left"></i></button>
+                <button id="gridNext" class="grid-nav"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="movie-grid" id="movieGrid">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+        </div>
+
+        <div class="two-columns">
+            <div class="reviews-section">
+                <h2 class="section-title"><i class="fas fa-comments"></i> Recent Reviews</h2>
+                <div id="reviewsContainer">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading reviews...</div>
+                </div>
+            </div>
+            <div class="top-reviewers-section">
+                <h2 class="section-title"><i class="fas fa-trophy"></i> Top Reviewers</h2>
+                <div id="topReviewersContainer">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3><i class="fas fa-film"></i> FlickFinder</h3>
+                <p>Your ultimate destination for movie reviews and recommendations.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4>Explore</h4>
+                <ul><li><a href="#">Movies</a></li><li><a href="#">TV Shows</a></li><li><a href="#">Coming Soon</a></li></ul>
+            </div>
+            <div class="footer-col">
+                <h4>Community</h4>
+                <ul><li><a href="#">Top Reviewers</a></li><li><a href="#">Write a Review</a></li><li><a href="#">Guidelines</a></li></ul>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <ul><li><a href="#">Help Center</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms</a></li></ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 FlickFinder. Data by TMDB.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL (Compact, with review form inside) -->
+    <div id="movieModal" class="modal">
+        <div class="modal-content glass-modal">
+            <span class="modal-close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
