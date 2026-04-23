@@ -3,27 +3,101 @@ const TMDB_API_KEY = '903bc9618d86a908c078d4e28e22e7d0';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/original';
 
+let currentUser = null;
 let currentMovies = [];
 let currentShows = [];
 let currentPage = 1;
-let currentMediaType = 'movie'; // 'movie' or 'tv'
+let currentMediaType = 'movie';
 let currentHeroIndex = 0;
 let heroInterval;
-
-// ========== MY LIST (localStorage) ==========
 let myList = [];
 
-function loadMyList() {
-    const saved = localStorage.getItem('flickfinder_mylist');
-    if (saved) {
-        myList = JSON.parse(saved);
+// ========== AUTHENTICATION ==========
+function initAuth() {
+    // Check if user is already logged in via Netlify Identity
+    if (window.netlifyIdentity) {
+        window.netlifyIdentity.on('init', user => {
+            if (user) {
+                currentUser = user;
+                updateAuthUI(true, user);
+                loadUserList();
+            } else {
+                updateAuthUI(false);
+            }
+        });
+        
+        window.netlifyIdentity.on('login', user => {
+            currentUser = user;
+            updateAuthUI(true, user);
+            loadUserList();
+            showToast(`Welcome back, ${user.user_metadata.full_name || user.email.split('@')[0]}! 🎬`);
+        });
+        
+        window.netlifyIdentity.on('logout', () => {
+            currentUser = null;
+            myList = [];
+            updateAuthUI(false);
+            showToast('Logged out successfully');
+            if (document.querySelector('.nav-link.active')?.getAttribute('data-page') === 'mylist') {
+                renderMyList();
+            }
+        });
     }
-    updateMyListCount();
 }
 
-function saveMyList() {
-    localStorage.setItem('flickfinder_mylist', JSON.stringify(myList));
-    updateMyListCount();
+function updateAuthUI(isLoggedIn, user = null) {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    
+    if (isLoggedIn && user) {
+        authButtons.style.display = 'none';
+        userMenu.style.display = 'flex';
+        const userName = user.user_metadata?.full_name || user.email.split('@')[0];
+        document.getElementById('userName').textContent = userName;
+    } else {
+        authButtons.style.display = 'flex';
+        userMenu.style.display = 'none';
+    }
+}
+
+function showAuthModal(mode = 'signup') {
+    if (window.netlifyIdentity) {
+        if (mode === 'signup') {
+            window.netlifyIdentity.open('signup');
+        } else {
+            window.netlifyIdentity.open('login');
+        }
+    } else {
+        alert('Please deploy to Netlify to enable authentication');
+    }
+}
+
+// ========== MY LIST (Database-backed) ==========
+async function loadUserList() {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch(`/.netlify/functions/get-list?email=${encodeURIComponent(currentUser.email)}`);
+        const items = await response.json();
+        
+        myList = items.map(item => ({
+            id: item.item_id,
+            mediaType: item.media_type,
+            title: item.title,
+            year: item.year,
+            rating: item.rating,
+            posterPath: item.poster_path
+        }));
+        
+        updateMyListCount();
+        
+        // If on My List page, refresh
+        if (document.querySelector('.nav-link.active')?.getAttribute('data-page') === 'mylist') {
+            renderMyList();
+        }
+    } catch (error) {
+        console.error('Error loading list:', error);
+    }
 }
 
 function updateMyListCount() {
@@ -35,28 +109,79 @@ function updateMyListCount() {
     }
 }
 
-function addToMyList(item) {
+async function addToMyList(item) {
+    if (!currentUser) {
+        showToast('Please login to save to My List 🔐');
+        showAuthModal('login');
+        return false;
+    }
+    
     // Check if already in list
-    if (!myList.some(i => i.id === item.id && i.mediaType === item.mediaType)) {
-        myList.push(item);
-        saveMyList();
-        showToast(`✅ Added "${item.title}" to My List`);
-    } else {
+    if (myList.some(i => i.id === item.id && i.mediaType === item.mediaType)) {
         showToast(`⚠️ "${item.title}" is already in your list`);
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/.netlify/functions/add-to-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userEmail: currentUser.email,
+                itemId: item.id,
+                mediaType: item.mediaType,
+                title: item.title,
+                year: item.year,
+                rating: item.rating,
+                posterPath: item.posterPath
+            })
+        });
+        
+        if (response.ok) {
+            myList.push(item);
+            updateMyListCount();
+            showToast(`✅ Added "${item.title}" to My List`);
+            return true;
+        } else {
+            showToast('Failed to add to list');
+            return false;
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Error adding to list');
+        return false;
     }
 }
 
-function removeFromMyList(id, mediaType) {
-    myList = myList.filter(i => !(i.id === id && i.mediaType === mediaType));
-    saveMyList();
-    showToast(`Removed from My List`);
-    if (document.getElementById('myListGrid')) {
-        renderMyList();
+async function removeFromMyList(id, mediaType) {
+    if (!currentUser) return;
+    
+    try {
+        const response = await fetch('/.netlify/functions/remove-from-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userEmail: currentUser.email,
+                itemId: id,
+                mediaType: mediaType
+            })
+        });
+        
+        if (response.ok) {
+            myList = myList.filter(i => !(i.id === id && i.mediaType === mediaType));
+            updateMyListCount();
+            showToast('Removed from My List');
+            if (document.querySelector('.nav-link.active')?.getAttribute('data-page') === 'mylist') {
+                renderMyList();
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        showToast('Error removing from list');
     }
 }
 
 function showToast(message) {
-    // Create temporary toast notification
     let toast = document.getElementById('toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -85,7 +210,7 @@ function showToast(message) {
     }, 2000);
 }
 
-// ========== FETCH TRENDING (Movies or TV) ==========
+// ========== FETCH TRENDING ==========
 async function fetchTrending(page = 1, type = 'movie') {
     currentMediaType = type;
     try {
@@ -132,7 +257,6 @@ function renderMovieGrid(items, type) {
         `;
     }).join('');
     
-    // Add click listeners
     document.querySelectorAll('.movie-card').forEach(card => {
         card.addEventListener('click', () => {
             const id = card.getAttribute('data-movie-id');
@@ -142,7 +266,7 @@ function renderMovieGrid(items, type) {
     });
 }
 
-// ========== HERO CAROUSEL (supports both movies and TV) ==========
+// ========== HERO CAROUSEL ==========
 async function initHero() {
     try {
         const response = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_API_KEY}&page=1`);
@@ -212,6 +336,11 @@ function renderMyList() {
     const sectionTitle = document.querySelector('.section-header h2');
     if (sectionTitle) sectionTitle.innerHTML = '<i class="fas fa-list"></i> My List';
     
+    if (!currentUser) {
+        movieGrid.innerHTML = '<div class="empty">🔐 Please login to see your saved movies and shows!</div>';
+        return;
+    }
+    
     if (myList.length === 0) {
         movieGrid.innerHTML = '<div class="empty">📭 Your list is empty. Click the + button on movies/TV shows to add them!</div>';
         return;
@@ -233,18 +362,15 @@ function renderMyList() {
         </div>
     `).join('');
     
-    // Add remove listeners
     document.querySelectorAll('.remove-from-list-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const id = parseInt(btn.getAttribute('data-id'));
             const type = btn.getAttribute('data-type');
             removeFromMyList(id, type);
-            renderMyList();
         });
     });
     
-    // Add click listeners to open modal
     document.querySelectorAll('.movie-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-from-list-btn')) return;
@@ -255,7 +381,7 @@ function renderMyList() {
     });
 }
 
-// ========== MODAL WITH ADD TO MY LIST BUTTON ==========
+// ========== MODAL ==========
 async function openMovieModal(movieId, mediaType = 'movie') {
     try {
         const response = await fetch(`https://api.themoviedb.org/3/${mediaType}/${movieId}?api_key=${TMDB_API_KEY}&append_to_response=credits`);
@@ -273,8 +399,7 @@ async function openMovieModal(movieId, mediaType = 'movie') {
         const language = languageMap[data.original_language] || data.original_language?.toUpperCase() || 'N/A';
         const collection = data.belongs_to_collection?.name || 'Standalone Film';
         
-        // Check if already in My List
-        const inMyList = myList.some(i => i.id === data.id && i.mediaType === mediaType);
+        const inMyList = currentUser && myList.some(i => i.id === data.id && i.mediaType === mediaType);
         
         const modalBody = document.getElementById('modalBody');
         modalBody.innerHTML = `
@@ -329,8 +454,7 @@ async function openMovieModal(movieId, mediaType = 'movie') {
         document.querySelector('.modal-close').onclick = () => document.getElementById('movieModal').style.display = 'none';
         window.onclick = (e) => { if (e.target === document.getElementById('movieModal')) document.getElementById('movieModal').style.display = 'none'; };
         
-        // Add to My List button handler
-        document.getElementById('modalAddToListBtn')?.addEventListener('click', (e) => {
+        document.getElementById('modalAddToListBtn')?.addEventListener('click', async (e) => {
             const btn = e.target;
             const id = parseInt(btn.getAttribute('data-id'));
             const type = btn.getAttribute('data-type');
@@ -339,15 +463,16 @@ async function openMovieModal(movieId, mediaType = 'movie') {
             const rating = btn.getAttribute('data-rating');
             const posterPath = btn.getAttribute('data-poster');
             
-            if (!myList.some(i => i.id === id && i.mediaType === type)) {
-                addToMyList({
-                    id: id,
-                    mediaType: type,
-                    title: title,
-                    year: year,
-                    rating: rating,
-                    posterPath: posterPath
-                });
+            const success = await addToMyList({
+                id: id,
+                mediaType: type,
+                title: title,
+                year: year,
+                rating: rating,
+                posterPath: posterPath
+            });
+            
+            if (success) {
                 btn.innerHTML = '<i class="fas fa-check"></i> In My List';
                 btn.style.background = '#333';
             }
@@ -362,7 +487,6 @@ async function openMovieModal(movieId, mediaType = 'movie') {
     }
 }
 
-// ========== SUBMIT REVIEW FROM MODAL ==========
 async function submitModalReview(movieId, movieTitle) {
     const userName = document.getElementById('modalUserName')?.value;
     const rating = parseInt(document.getElementById('modalRating')?.value);
@@ -502,15 +626,20 @@ async function prevPage() {
     } 
 }
 
-// ========== HERO NAVIGATION ==========
+// ========== EVENT LISTENERS ==========
 document.querySelector('.hero-prev')?.addEventListener('click', () => { const slides = document.querySelectorAll('.hero-slide'); goToHeroSlide((currentHeroIndex - 1 + slides.length) % slides.length); });
 document.querySelector('.hero-next')?.addEventListener('click', () => { const slides = document.querySelectorAll('.hero-slide'); goToHeroSlide((currentHeroIndex + 1) % slides.length); });
+document.getElementById('signinBtn')?.addEventListener('click', () => showAuthModal('signup'));
+document.getElementById('loginBtn')?.addEventListener('click', () => showAuthModal('login'));
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    if (window.netlifyIdentity) window.netlifyIdentity.logout();
+});
 
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
 // ========== INIT ==========
 async function init() {
-    loadMyList();
+    initAuth();
     setupNavigation();
     await fetchTrending(1, 'movie');
     await initHero();

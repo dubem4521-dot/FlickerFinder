@@ -13,5 +13,16 @@
   "devDependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "netlify-cli": "^25.3.0"
-  }
+  },
+  "dependencies": {
+    "netlify-identity-widget": "^2.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dubem4521-dot/FlickerFinder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dubem4521-dot/FlickerFinder/issues"
+  },
+  "homepage": "https://github.com/dubem4521-dot/FlickerFinder#readme"
 }

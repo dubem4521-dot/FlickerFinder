@@ -162,6 +162,40 @@ body {
     color: white;
 }
 
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255,255,255,0.1);
+    padding: 6px 16px;
+    border-radius: 40px;
+}
+
+.user-avatar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.user-avatar i {
+    font-size: 1.3rem;
+    color: #e50914;
+}
+
+.auth-btn.logout {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 4px 12px;
+}
+
+.auth-btn.logout:hover {
+    border-color: #e50914;
+    background: rgba(229,9,20,0.1);
+}
+
 /* ========== HERO SECTION - DESCRIPTION ON RIGHT ========== */
 .hero {
     position: relative;
